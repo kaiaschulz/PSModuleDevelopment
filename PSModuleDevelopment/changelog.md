@@ -1,5 +1,8 @@
 ﻿# Changelog
 
+## 2.2.11.100 (2021-12-17)
+
+
 ## 2.2.10.128 (2021-11-11)
 
 + New: Action: deployModule - Deploys a module to the target computer(s)

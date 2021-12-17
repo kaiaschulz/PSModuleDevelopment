@@ -16,9 +16,57 @@ param (
 	
 	[switch]
 	$SkipPublish,
+
+	[switch]
+	$StorageAccount,
+
+	[switch]
+	$AutomationAccount,
 	
 	[switch]
-	$AutoVersion
+	$AutoVersion,
+
+	[string]
+	$ModuleSource,
+
+	[string]
+	$KeyVaultName,
+
+	[string]
+	$KeyVaultSecretNameSasToken,
+
+	[string]
+	$SasToken,
+
+	[string]
+	$StorageAccountSubscriptionId,
+
+	[string]
+	$StorageAccountName,
+
+	[string]
+	$StorageAccountContainer,
+
+	[bool]
+	$StorageAccountContainerCreate,
+
+	[string]
+	$StorageAccountBlobName,
+
+	[bool]
+	$StorageAccountBlobOverwrite,
+
+	[string]
+	$AutomationAccountSubscriptionId,
+
+	[string]
+	$AutomationAccountResourceGroupName,
+
+	[string]
+	$AutomationAccountName,
+
+	[string]
+	$AutomationAccountModuleName
 )
 
 #region Handle Working Directory Defaults
@@ -135,5 +183,32 @@ else
 	# Publish to Gallery
 	Write-PSFMessage -Level Important -Message "Publishing the PSModuleDevelopment module to $($Repository)"
 	Publish-Module -Path "$($publishDir.FullName)\PSModuleDevelopment" -NuGetApiKey $ApiKey -Force -Repository $Repository
+}
+if ($StorageAccount -or $AutomationAccount) 
+{
+	if ($StorageAccount -and $AutomationAccount -and !($(Split-Path -Path $ModuleSource -Extension) -eq ".zip")) 
+	{
+		Compress-Archive -Path "$($ModuleSource)\*" -DestinationPath "$AutomationAccountModuleName.zip"
+	}
+	Connect-AzAccount
+
+	Write-PSMDFileToStorageAccount -Source $ModuleSource `
+								   -KeyVaultName $KeyVaultName `
+								   -KeyVaultSecretNameSasToken $KeyVaultSecretNameSasToken `
+								   -SasToken $SasToken `
+								   -StorageAccountSubscriptionId $StorageAccountSubscriptionId `
+								   -StorageAccountName $StorageAccountName `
+								   -StorageAccountContainer $StorageAccountContainer `
+								   -StorageAccountContainerCreate $StorageAccountContainerCreate `
+								   -StorageAccountBlobName $StorageAccountBlobName `
+								   -StorageAccountBlobOverwrite $StorageAccountBlobOverwrite
+	if ($AutomationAccount) {
+		[uri]$StorageAccountModuleLink = "https://$($StorageAccountName).blob.core.windows.net/$($StorageAccountContainer)/$($ModuleName)?$($SasToken)"
+		Publish-PSMDModuleToAutomationAccount -AutomationAccountSubscriptionId $AutomationAccountSubscriptionId `
+											  -AutomationAccountResourceGroupName $AutomationAccountResourceGroupName `
+											  -AutomationAccountName $AutomationAccountName `
+											  -ModuleLink $StorageAccountModuleLink `
+											  -ModuleName $AutomationAccountModuleName
+	}
 }
 #endregion Publish
